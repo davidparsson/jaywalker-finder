@@ -3,6 +3,7 @@ import ast
 import sys
 import urllib
 import optparse
+import datetime
 
 verbose = False
 
@@ -17,13 +18,16 @@ def parse(url, tree=None):
 def find_committers(url):
   jobs_in_view = parse(url, "jobs[name,url]")['jobs']
 
+  print "Yellow committers:"
+
   culprits = []
   culprit_ids = {}
+  days = {}
   for job in jobs_in_view:
     print_if_verbose('Querying %s...' % job['name'])
-    result = parse(job['url'], "builds[result,culprits[id,fullName]]")
+    builds = parse(job['url'], "builds[result,timestamp,culprits[id,fullName]]")
 
-    for build in result['builds']:
+    for build in builds['builds']:
       result = build['result']
       print_if_verbose("  " + result)
       if result != 'SUCCESS':
@@ -43,15 +47,15 @@ def find_committers(url):
               del culprit_ids[culprit_id]
         culprits = []
         if culprit_ids:
-          print "Yellow committers:"
+          date = get_date(build)
+          print date
           for id in culprit_ids:
             print "  " + id + ", " + culprit_ids[id]
+          days[date] = culprit_ids
         culprit_ids = {}
 
-
-
-
-
+def get_date(build):
+  return datetime.date.fromtimestamp(int(build["timestamp"])/1000)
 
 def print_if_verbose(message):
   if verbose:
