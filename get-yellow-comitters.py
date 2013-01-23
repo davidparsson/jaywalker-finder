@@ -20,39 +20,40 @@ def find_committers(url):
 
   print "Yellow committers:"
 
-  culprits = []
-  culprit_ids = {}
-  days = {}
   for job in jobs_in_view:
-    print_if_verbose('Querying %s...' % job['name'])
-    builds = parse(job['url'], "builds[result,timestamp,culprits[id,fullName]]")
+    builds = parse(job['url'], "builds[result,number,timestamp,culprits[id,fullName]]")
+
+    culprits = []
+    culprit_ids = {}
+    last_build = None
 
     for build in builds['builds']:
       result = build['result']
-      print_if_verbose("  " + result)
+      print_if_verbose("  " + str(result))
       if result != 'SUCCESS':
+        if not last_build:
+          last_build = build['number']
         if culprits:
-          print_if_verbose("  Adding:")
           for culprit in culprits:
-            print_if_verbose("    " + culprit['id'])
             culprit_ids[culprit['id']] = culprit['fullName']
         culprits = build['culprits']
       else:
         if culprits:
-          print_if_verbose("  Removing:")
           for culprit in culprits:
             culprit_id = culprit['id']
-            print_if_verbose("    " + culprit_id)
             if culprit_id in culprit_ids:
               del culprit_ids[culprit_id]
         culprits = []
         if culprit_ids:
           date = get_date(build)
-          print date
-          for id in culprit_ids:
-            print "  " + id + ", " + culprit_ids[id]
-          days[date] = culprit_ids
+          names = ""
+          for culprit_id in culprit_ids:
+            if names:
+              names += ", "
+            names += culprit_ids[culprit_id] + " <" + culprit_id + ">"
+          print job['name'] + " - " + str(date) + " - #" + str(build['number'] + 1) + "-#" + str(last_build) + " - " + names
         culprit_ids = {}
+        last_build = None
 
 def get_date(build):
   return datetime.date.fromtimestamp(int(build["timestamp"])/1000)
@@ -81,4 +82,4 @@ Gets yellow committers for all jobs in the supplied Jenkins view.""")
     return 1
 
 if __name__ == '__main__':
-	sys.exit(main())
+  sys.exit(main())
